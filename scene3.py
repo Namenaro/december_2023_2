@@ -1,3 +1,5 @@
+import math
+
 from utils import get_signal_snippet, draw_ECG, Distr, HtmlLogger, make_arrows
 
 
@@ -5,7 +7,7 @@ import matplotlib.pyplot as plt
 import statistics
 
 class UDistr:
-    def __init__(self, a, b):
+    def __init__(self, a=-90, b=90):
         self.a = a
         self.b = b
 
@@ -15,6 +17,11 @@ class UDistr:
         p = event/all
         return p
 
+def get_alpha_from_k(k):
+    tg = k
+    angle_radians = math.atan(tg)
+    graduses = angle_radians * 180/math.pi
+    return graduses
 
 
 class Region:
@@ -34,6 +41,16 @@ class Region:
         pass
 
 
+
+    def get_alphas_from_ks(self):
+        pass
+
+    def get_mean_alpha(self):
+        pass
+
+
+
+
 class SceneNoInertia:
     def __init__(self, neg_end, predicted_k):
         self.full_signal = get_signal_snippet(lead_name='i', start_coord=340, end_coord=435)
@@ -46,13 +63,15 @@ class SceneNoInertia:
         self.region_neg = Region
         self.region_full = Region
 
-    def compare_k_to_k_best(self):
+        self.predicted_k = predicted_k
+
+    def compare_predicted_to_best(self):
         pass
 
-    def get_k_best(self):
+    def get_best(self):
         pass
 
-    def eval_k_best_profit(self):
+    def eval_best_profit(self):
         pass
 
     def get_r(self):
@@ -70,7 +89,7 @@ def ex(log, neg_end):
     r_list = []
     predicted_k_list = list(range(-15, 15, 4))
     for predicted_k in predicted_k_list:
-        scene.dy_law = predicted_k
+        scene.predicted_k = predicted_k
         r = scene.get_r()
         r_list.append(r)
 
