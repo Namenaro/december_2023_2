@@ -4,6 +4,19 @@ from utils import get_signal_snippet, draw_ECG, Distr, HtmlLogger, make_arrows
 import matplotlib.pyplot as plt
 import statistics
 
+class UDistr:
+    def __init__(self, a, b):
+        self.a = a
+        self.b = b
+
+    def get_p_of_event(self, a1, b1):
+        all = abs(self.b-self.a)
+        event = abs(b1 - a1)
+        p = event/all
+        return p
+
+
+
 class SceneNoInertia:
     def __init__(self, dy_law, neg_end):
         self.full_signal = get_signal_snippet(lead_name='i', start_coord=340, end_coord=435)
@@ -26,15 +39,11 @@ class SceneNoInertia:
         vs = self.get_pos_vs() + self.get_neg_vs()
         return vs
 
-    def draw_v_hists(self, log):
-        fig, ax = plt.subplots()
-        pos = self.get_pos_vs()
-        negs = self.get_neg_vs()
-        ax.hist(pos, label="v+", color='green', alpha=0.5)
-        ax.hist(negs, label="v-", color='red', alpha=0.5)
-        ax.hist(negs+pos, color='gray', alpha=0.3)
-        ax.legend()
-        log.add_fig(fig)
+    def get_dV(self):
+        abs_razbros = abs (max (self.get_full_vs()) - min(self.get_full_vs()) )
+        #dV = abs_razbros/len(self.get_full_vs())
+        return abs_razbros
+
 
     def draw(self, log):
         fig, ax = plt.subplots()
@@ -45,35 +54,24 @@ class SceneNoInertia:
         ax.vlines(x=self.neg_start, ymin=0, ymax=max(self.full_signal), colors='red', lw=2, alpha=0.5)
         ax.vlines(x=self.neg_end, ymin=0, ymax=max(self.full_signal), colors='red', lw=2, alpha=0.5)
         log.add_fig(fig)
-
-    def get_dvs_sample(self, vs):
-        dvs = []
-        for i in range(1, len(vs)):
-            v1 = vs[i]
-            v0 = vs[i-1]
-            dv = v1-v0
-            dvs.append(dv)
-        return dvs
-
-    def get_dvs_mean(self):
-        dvs = self.get_dvs_sample(vs=self.get_pos_vs())
-        return statistics.mean(dvs)
-
+ 
 
     def measure_r_in_point_pos(self, index_child):
-        dvs = self.get_dvs_sample(vs=self.get_full_vs()) #TODO
-        dvs_distr = Distr(sample=dvs)
-
+        dV = self.get_dV()
+        dv_distr = UDistr(a=-dV, b=dV)
         real_dv = self.full_signal[index_child] - self.full_signal[index_child -1]
-        predicted_dv=self.dy_law
+        predicted_dv = self.dy_law
 
-        p_of_so_close = dvs_distr.get_p_of_event(real_dv, predicted_dv)
 
-        mean_dv = dvs_distr.get_mean()
-        err_naive = abs(mean_dv - real_dv)
+        err_naive = abs(real_dv)
         err_of_prediction = abs(predicted_dv - real_dv)
-        if err_naive < err_of_prediction:
+
+        p_of_so_close = dv_distr.get_p_of_event(real_dv, predicted_dv)
+
+        if err_naive < err_of_prediction: # наше предсказание вредно
             return - p_of_so_close
+
+        # наше предсказание хорошее
         return 1 - p_of_so_close
 
 
@@ -83,40 +81,7 @@ class SceneNoInertia:
            r += self.measure_r_in_point_pos(index_child=index)
 
         max_r = len(self.get_pos_vs())
-        return r
-
-
-    def measure_r_in_point_neg(self, index_child):
-        dvs = self.get_dvs_sample(vs=self.get_full_vs()) #TODO
-        dvs_distr = Distr(sample=dvs)
-
-        real_dv = self.full_signal[index_child] - self.full_signal[index_child -1]
-        predicted_dv = self.dy_law
-
-        p_of_so_close = dvs_distr.get_p_of_event(real_dv, predicted_dv)
-
-        mean_dv = dvs_distr.get_mean()
-        err_naive = abs(mean_dv - real_dv)
-        err_of_prediction = abs(predicted_dv - real_dv)
-        if err_naive > err_of_prediction:
-            return - p_of_so_close
-        return 1 - p_of_so_close
-
-    def get_r_of_so_good_neg(self):
-        r = 0
-        for index in range(self.pos_start + 1, self.pos_end + 1):
-            r += self.measure_r_in_point_neg(index_child=index)
-
-        max_r = len(self.get_neg_vs())
-        return r
-
-    def get_r(self):
-        r_pos = self.get_r_of_so_good_pos()
-        r_neg = self.get_r_of_so_good_neg()
-        r = r_neg + r_pos
-        max_r = len(self.get_full_vs())
         return r/max_r
-
 
 
 def ex(log, neg_end):
@@ -130,7 +95,7 @@ def ex(log, neg_end):
     y_low_list = list(range(-15, 15, 1))
     for dy_law in y_low_list:
         scene.dy_law = dy_law
-        r_pos = scene.get_r()  # _of_so_good_pos()
+        r_pos = scene.get_r_of_so_good_pos()
         r_pos_list.append(r_pos)
 
     index = r_pos_list.index(max(r_pos_list))
@@ -147,7 +112,7 @@ def ex(log, neg_end):
 
 
 if __name__ == '__main__':
-    log = HtmlLogger("NO_INERTIA")
+    log = HtmlLogger("NO_INERTIA2")
     ex(log, neg_end=90)
     ex(log, neg_end=50)
 
