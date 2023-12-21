@@ -6,16 +6,18 @@ from utils import get_signal_snippet, draw_ECG, Distr, HtmlLogger, make_arrows
 import matplotlib.pyplot as plt
 import statistics
 
-class UDistr:
-    def __init__(self, a=-90, b=90):
-        self.a = a
-        self.b = b
+
+class AlphaUniformDistr:
+    def __init__(self):
+        self.a = -90
+        self.b = 90
 
     def get_p_of_event(self, a1, b1):
         all = abs(self.b-self.a)
         event = abs(b1 - a1)
         p = event/all
         return p
+
 
 def get_alpha_from_k(k):
     tg = k
@@ -28,26 +30,31 @@ class Region:
     def __init__(self, vals):
         self.vals = vals
 
-    def get_ks(self):
-        return ks
-
-    def get_ks_segmentary(self, seg_len):
-        pass
-
-    def get_k_by_end_start(self):
-        pass
-
     def get_mean_k(self):
-        pass
-
-
-
-    def get_alphas_from_ks(self):
-        pass
+        ks = self._get_ks()
+        k_mean = statistics.mean(ks)
+        return k_mean
 
     def get_mean_alpha(self):
-        pass
+        alphas = self._get_alphas()
+        return statistics.mean(alphas)
 
+    def _get_alphas(self):
+        alphas = []
+        ks = self._get_ks()
+        for k in ks:
+            alpha = get_alpha_from_k(k)
+            alphas.append(alpha)
+        return alphas
+
+    def _get_ks(self):
+        ks = []
+        for i in range(len(self.vals) - 1):
+            v = self.vals[i]
+            v_next = self.vals[i + 1]
+            k = v_next - v
+            ks.append(k)
+        return ks
 
 
 
